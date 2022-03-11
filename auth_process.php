@@ -9,8 +9,9 @@ try {
 } catch (Exception $e) {
   echo 'Exceção capturada: ',  $e->getMessage(), "\n";
 }
+
 $message = new Message($BASE_URL);
-$userDAO = new userDAO($conn, $BASE_URL);
+$userDAO = new UserDAO($conn, $BASE_URL);
 
 // Verifica o tipo de formulario
 
@@ -32,7 +33,22 @@ if ($type === "register") {
 
       // Verificar se o email ja esta cadastrado no sistema
       if ($userDAO->findByEmail($email) === false) {
-        echo "Nenhum usuário foi encontrado";
+
+        $user = new User();
+
+        //Criação de Token e Senha
+        $usertoken = $user->generateToken();
+        $finalPassword = $user->generatePassword($password);
+
+        $user->name = $name;
+        $user->lastname = $lastname;
+        $user->email = $email;
+        $user->password = $finalPassword;
+        $user->token = $usertoken;
+
+        $auth = true;
+
+        $userDAO->create($user, $auth);
       } else {
         // Enviar uma mensagem de erro caso o usuario ja tenha email cadastrado
         $message->setMessage("E-mail já cadastrado.", "error", "back");
@@ -46,4 +62,19 @@ if ($type === "register") {
     $message->setMessage("Por favor, preencha todos os campos.", "error", "back");
   }
 } else if ($type === "login") {
+
+  $email = filter_input(INPUT_POST, "email");
+  $password = filter_input(INPUT_POST, "password");
+
+  // Tentativa de autenticar o usuario
+  if ($userDAO->authenticateUser($email, $password)) {
+
+    $message->setMessage("Seja bem-vindo", "success", "editprofile.php");
+
+    // Redireciona o usuario caso não seja autenticado
+  } else {
+    $message->setMessage("Usuario ou senha incorretos.", "error", "back");
+  }
+} else {
+  $message->setMessage("Informações inválidas.", "error", "index.php");
 }
